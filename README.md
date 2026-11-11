@@ -4,7 +4,9 @@ Fetch the boundary polygon that Google Maps draws for a locality, city or postal
 
 When you search for an area on Google Maps, the map outlines it with a red dotted line. This library reads that outline from the map's vector tiles and returns it as a polygon. It needs no API key and no browser.
 
-![Boundary of Indiranagar, Bengaluru, drawn over OpenStreetMap](https://raw.githubusercontent.com/kujjwal02/gmaps-boundary/main/docs/indiranagar.png)
+![Boundaries of Indiranagar, Manhattan, Bandra West, Shibuya, Paris and postal code 560038, drawn over Google Maps](https://raw.githubusercontent.com/kujjwal02/gmaps-boundary/main/docs/gallery.png)
+
+Each panel is the polygon this library returned, drawn with `gmaps_boundary.preview`.
 
 ## Install
 
@@ -74,7 +76,7 @@ with BoundaryClient(http_client=session) as client:
 session.close()
 ```
 
-`AsyncBoundaryClient` takes an `httpx.AsyncClient` the same way. Set a browser User-Agent on your session: Google answers the default httpx one differently. `http_client` cannot be combined with `proxy`, `timeout_s`, `user_agent` or `transport`; set those on the session.
+`AsyncBoundaryClient` takes an `httpx.AsyncClient` the same way. The library's own client sends a browser User-Agent. A session you pass sends whatever you set on it. `http_client` cannot be combined with `proxy`, `timeout_s`, `user_agent` or `transport`; set those on the session.
 
 ### Async
 
@@ -101,18 +103,20 @@ gmaps-boundary "560038" --zoom 16 --indent 2 > pincode.geojson
 gmaps-boundary "Manhattan, New York" -o manhattan.geojson --preview manhattan.png
 ```
 
-`--preview` draws the boundary over an OpenStreetMap map and needs `pip install 'gmaps-boundary[preview]'`. Add `--no-basemap` to draw the outline alone, with no request to OpenStreetMap. Run `gmaps-boundary --help` for every option.
+`--preview` draws the boundary over a map and needs `pip install 'gmaps-boundary[preview]'`. `--basemap` picks the map: `google` (default), `osm`, or `none` for the outline alone with no extra request. Run `gmaps-boundary --help` for every option.
 
 The same drawing is available from Python:
 
 ```python
-from gmaps_boundary.preview import save_preview
+from gmaps_boundary.preview import draw_boundary, save_preview
 
-save_preview(boundary, "indiranagar.png")  # over OpenStreetMap
-save_preview(boundary, "outline.png", basemap=False)  # outline only
+save_preview(boundary, "indiranagar.png")  # over Google Maps
+save_preview(boundary, "indiranagar.png", basemap="osm")  # over OpenStreetMap
+save_preview(boundary, "outline.png", basemap="none")  # outline only
+draw_boundary(axis, boundary)  # on your own matplotlib axis
 ```
 
-The basemap uses at most 20 tiles from `tile.openstreetmap.org` per image. Map data (C) OpenStreetMap contributors.
+A map uses at most 20 tiles per image. Google tiles: Map data (C) Google. OpenStreetMap tiles: (C) OpenStreetMap contributors.
 
 ## Name lookup
 
@@ -157,9 +161,27 @@ Every error is a subclass of `GmapsBoundaryError`.
 3. The library reads the outline at a coarse zoom first. That pass sizes the job and tells the fine pass which tiles to fetch.
 4. For each fine tile, the place part is the tile square minus the mask. The parts are merged into one polygon and converted to longitude and latitude.
 
+The [documentation](https://github.com/kujjwal02/gmaps-boundary/tree/main/docs) has the details, with diagrams:
+
+- [How it works](https://github.com/kujjwal02/gmaps-boundary/blob/main/docs/how-it-works.md)
+- [Tile format](https://github.com/kujjwal02/gmaps-boundary/blob/main/docs/tile-format.md)
+- [Search format](https://github.com/kujjwal02/gmaps-boundary/blob/main/docs/search-format.md)
+- [Findings](https://github.com/kujjwal02/gmaps-boundary/blob/main/docs/findings.md)
+
+## If Google changes its format
+
+This library reads undocumented endpoints, and Google can change them at any time. When that happens the library raises `ResponseFormatError`.
+
+Please [open an issue](https://github.com/kujjwal02/gmaps-boundary/issues/new?template=format-change.yml) when:
+
+- you get a `ResponseFormatError`, or
+- a polygon does not match the red dotted line that Google Maps shows for the place.
+
+Include the library version, the query, the zoom and the full error message. The guide [Investigating a format change](https://github.com/kujjwal02/gmaps-boundary/blob/main/docs/investigating-format-changes.md) shows how to find what changed, if you want to send a fix.
+
 ## Limits
 
-- The tile and search formats are undocumented. Google can change them without notice. The library then raises `ResponseFormatError` instead of returning a wrong polygon.
+- The tile and search formats are undocumented. See "If Google changes its format" above.
 - A place made of separate pieces is returned as a `MultiPolygon`. A piece that lies more than about 10 km from the label point and does not touch the rest can be missed.
 - Short `maps.app.goo.gl` links are not accepted. Open the link and copy the full URL.
 - The boundary is what Google Maps displays. It is not an official administrative boundary.
@@ -176,6 +198,7 @@ uv run pytest             # offline, replays recorded responses
 uv run pytest -m live     # calls Google
 uv run ruff check . && uv run ruff format --check . && uv run mypy
 uv run python tests/record_fixtures.py   # refresh the recorded responses
+uv run python scripts/draw_gallery.py docs/gallery.png   # redraw the README image
 ```
 
 ## License

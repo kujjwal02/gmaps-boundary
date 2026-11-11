@@ -62,3 +62,13 @@ def test_packed_varints_and_zigzag() -> None:
         4144,
         0,
     ]
+
+
+def test_format_errors_say_where_to_report_a_change() -> None:
+    error = ResponseFormatError("tile: area geometry has no vertex field")
+    assert error.detail == "tile: area geometry has no vertex field"
+    assert str(error) == (
+        "tile: area geometry has no vertex field. Google may have changed its format. "
+        "Check for a newer gmaps-boundary, then report it at "
+        "https://github.com/kujjwal02/gmaps-boundary/issues"
+    )

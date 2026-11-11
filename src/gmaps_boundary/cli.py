@@ -11,7 +11,7 @@ from pathlib import Path
 from ._tiles import MAX_ZOOM
 from .client import DEFAULT_MAX_TILES, BoundaryClient
 from .errors import GmapsBoundaryError
-from .preview import save_preview
+from .preview import BASEMAPS, save_preview
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -43,13 +43,13 @@ def _parser() -> argparse.ArgumentParser:
         "--preview",
         type=Path,
         default=None,
-        help="also draw the outline over an OpenStreetMap map to this PNG "
-        "(needs gmaps-boundary[preview])",
+        help="also draw the boundary over a map to this PNG (needs gmaps-boundary[preview])",
     )
     parser.add_argument(
-        "--no-basemap",
-        action="store_true",
-        help="draw the preview without the OpenStreetMap background",
+        "--basemap",
+        choices=BASEMAPS,
+        default="google",
+        help="map behind the preview (default: google)",
     )
     return parser
 
@@ -64,7 +64,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 options.query, zoom=options.zoom, max_tiles=options.max_tiles
             )
         if options.preview is not None:
-            save_preview(boundary, options.preview, basemap=not options.no_basemap)
+            save_preview(boundary, options.preview, basemap=options.basemap)
     except (GmapsBoundaryError, ValueError) as error:
         print(f"gmaps-boundary: {error}", file=sys.stderr)
         return 1

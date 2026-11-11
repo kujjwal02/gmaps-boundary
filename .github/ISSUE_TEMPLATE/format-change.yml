@@ -1,0 +1,65 @@
+name: Google format change or wrong polygon
+description: The library raised ResponseFormatError, or returned a polygon that does not match Google Maps.
+title: "Format change: "
+labels: ["format-change"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Google does not document the endpoints this library reads, so reports like this are how breakage gets found. Thank you.
+        First check that you run the newest version: `pip install -U gmaps-boundary`.
+  - type: input
+    id: version
+    attributes:
+      label: Library version
+      description: Output of `python -c "import gmaps_boundary; print(gmaps_boundary.__version__)"`
+    validations:
+      required: true
+  - type: input
+    id: query
+    attributes:
+      label: Query
+      description: The place name or Google Maps place URL you passed.
+      placeholder: Indiranagar, Bengaluru
+    validations:
+      required: true
+  - type: input
+    id: zoom
+    attributes:
+      label: Zoom and max_tiles
+      description: The values you passed, or "defaults".
+      placeholder: defaults
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What happened
+      options:
+        - ResponseFormatError was raised
+        - The polygon does not match the red dotted line on Google Maps
+        - Another error that looks like a format change
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Full error message or description
+      description: Paste the traceback. For a wrong polygon, describe the difference or attach a preview image.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: when-where
+    attributes:
+      label: Date and country
+      description: When you ran it, and the country of the machine or proxy. Google can roll a change out by region.
+      placeholder: 2026-11-11, India
+    validations:
+      required: true
+  - type: textarea
+    id: dump
+    attributes:
+      label: Tile dump (optional)
+      description: Output of `uv run python scripts/dump_tile.py "<query>" <zoom> <x> <y>` for the tile named in the error.
+      render: text

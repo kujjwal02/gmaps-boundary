@@ -53,7 +53,8 @@ def test_cli_writes_the_file_and_the_preview(
             str(geojson_path),
             "--preview",
             str(png_path),
-            "--no-basemap",
+            "--basemap",
+            "none",
         ]
     )
     assert status == 0

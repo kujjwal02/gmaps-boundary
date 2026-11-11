@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "gmaps-boundary"
-version = "0.1.0"
+version = "0.1.1"
 description = "Fetch the boundary polygon Google Maps draws for a locality, city or postal code, as GeoJSON."
 readme = "README.md"
 license = "MIT"
@@ -46,6 +46,7 @@ Changelog = "https://github.com/kujjwal02/gmaps-boundary/blob/main/CHANGELOG.md"
 [dependency-groups]
 dev = [
     "matplotlib>=3.7",
+    "pillow>=10",
     "mypy>=1.13",
     "pytest>=8",
     "ruff>=0.8",
@@ -75,5 +76,5 @@ strict = true
 files = ["src", "tests"]
 
 [[tool.mypy.overrides]]
-module = ["matplotlib.*"]
+module = ["matplotlib.*", "PIL.*"]
 ignore_missing_imports = true

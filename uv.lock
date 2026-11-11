@@ -519,7 +519,7 @@ wheels = [
 
 [[package]]
 name = "gmaps-boundary"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -541,6 +541,8 @@ dev = [
     { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "matplotlib", version = "3.11.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "mypy" },
+    { name = "pillow", version = "12.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pillow", version = "13.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pytest" },
     { name = "ruff" },
     { name = "types-shapely" },
@@ -559,6 +561,7 @@ provides-extras = ["preview"]
 dev = [
     { name = "matplotlib", specifier = ">=3.7" },
     { name = "mypy", specifier = ">=1.13" },
+    { name = "pillow", specifier = ">=10" },
     { name = "pytest", specifier = ">=8" },
     { name = "ruff", specifier = ">=0.8" },
     { name = "types-shapely", specifier = ">=2.0" },
