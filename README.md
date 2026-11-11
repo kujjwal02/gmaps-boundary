@@ -4,7 +4,7 @@ Fetch the boundary polygon that Google Maps draws for a locality, city or postal
 
 When you search for an area on Google Maps, the map outlines it with a red dotted line. This library reads that outline from the map's vector tiles and returns it as a polygon. It needs no API key and no browser.
 
-![Boundaries of Indiranagar, Manhattan, Bandra West, Shibuya, Paris and postal code 560038, drawn over Google Maps](https://raw.githubusercontent.com/kujjwal02/gmaps-boundary/main/docs/gallery.png)
+![Boundaries of Indiranagar, Manhattan, Bandra West, Shibuya, Paris and postal code 560038, drawn over Google Maps](https://raw.githubusercontent.com/kujjwal02/gmaps-boundary/v0.1.1/docs/gallery.png)
 
 Each panel is the polygon this library returned, drawn with `gmaps_boundary.preview`.
 
@@ -200,6 +200,8 @@ uv run ruff check . && uv run ruff format --check . && uv run mypy
 uv run python tests/record_fixtures.py   # refresh the recorded responses
 uv run python scripts/draw_gallery.py docs/gallery.png   # redraw the README image
 ```
+
+The README image URL names a release tag, so a published page keeps its image. Change the tag in that URL when you cut a release.
 
 ## License
 
