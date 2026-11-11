@@ -47,7 +47,14 @@ def test_cli_writes_the_file_and_the_preview(
 ) -> None:
     geojson_path, png_path = tmp_path / "out.geojson", tmp_path / "out.png"
     status = cli_module.main(
-        ["Indiranagar, Bengaluru", "-o", str(geojson_path), "--preview", str(png_path)]
+        [
+            "Indiranagar, Bengaluru",
+            "-o",
+            str(geojson_path),
+            "--preview",
+            str(png_path),
+            "--no-basemap",
+        ]
     )
     assert status == 0
     assert capsys.readouterr().out == ""

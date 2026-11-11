@@ -8,10 +8,10 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from ._boundary import Boundary
 from ._tiles import MAX_ZOOM
 from .client import DEFAULT_MAX_TILES, BoundaryClient
 from .errors import GmapsBoundaryError
+from .preview import save_preview
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -43,37 +43,15 @@ def _parser() -> argparse.ArgumentParser:
         "--preview",
         type=Path,
         default=None,
-        help="also draw the outline to this PNG (needs gmaps-boundary[preview])",
+        help="also draw the outline over an OpenStreetMap map to this PNG "
+        "(needs gmaps-boundary[preview])",
+    )
+    parser.add_argument(
+        "--no-basemap",
+        action="store_true",
+        help="draw the preview without the OpenStreetMap background",
     )
     return parser
-
-
-def _write_preview(boundary: Boundary, png_path: Path) -> None:
-    try:
-        import matplotlib
-    except ImportError as error:
-        raise GmapsBoundaryError(
-            "--preview needs matplotlib: pip install 'gmaps-boundary[preview]'"
-        ) from error
-    import math
-
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    from matplotlib.ticker import MaxNLocator
-
-    figure, axis = plt.subplots(figsize=(8, 8))
-    for polygon in getattr(boundary.geometry, "geoms", [boundary.geometry]):
-        axis.fill(*polygon.exterior.xy, facecolor=(1.0, 0.0, 0.0, 0.08), edgecolor="red")
-        for hole in polygon.interiors:
-            axis.fill(*hole.xy, facecolor="white", edgecolor="red")
-    axis.set_aspect(1.0 / math.cos(math.radians(boundary.place.latitude)))
-    axis.set_title(boundary.place.name or boundary.place.feature_id)
-    axis.xaxis.set_major_locator(MaxNLocator(5))
-    axis.ticklabel_format(useOffset=False, style="plain")
-    axis.set_xlabel("longitude")
-    axis.set_ylabel("latitude")
-    figure.savefig(png_path, dpi=120, bbox_inches="tight")
-    plt.close(figure)
 
 
 def main(arguments: Sequence[str] | None = None) -> int:
@@ -86,7 +64,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 options.query, zoom=options.zoom, max_tiles=options.max_tiles
             )
         if options.preview is not None:
-            _write_preview(boundary, options.preview)
+            save_preview(boundary, options.preview, basemap=not options.no_basemap)
     except (GmapsBoundaryError, ValueError) as error:
         print(f"gmaps-boundary: {error}", file=sys.stderr)
         return 1

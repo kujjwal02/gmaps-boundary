@@ -5,6 +5,7 @@ Public names:
     BoundaryClient, AsyncBoundaryClient: reusable clients.
     Boundary, Place: the returned types.
     MAX_ZOOM: the finest tile zoom that carries boundaries.
+    preview.save_preview: draw a boundary to a PNG (needs the preview extra).
     GmapsBoundaryError and its subclasses: PlaceNotFoundError, NoBoundaryError,
         TooManyTilesError, ResponseFormatError, RequestFailedError.
 """

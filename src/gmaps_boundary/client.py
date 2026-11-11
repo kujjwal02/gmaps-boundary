@@ -23,7 +23,24 @@ DEFAULT_MAX_TILES = 500
 _RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
 _FIRST_RETRY_DELAY_S = 0.5
 
+_DEFAULT_TIMEOUT_S = 20.0
+
 ReturnValue = TypeVar("ReturnValue")
+
+
+def _reject_connection_options(
+    proxy: str | None, timeout_s: float, user_agent: str, transport: object
+) -> None:
+    """A caller-owned HTTP client carries its own connection settings, so reject ours."""
+    conflicts = {
+        "proxy": proxy is not None,
+        "timeout_s": timeout_s != _DEFAULT_TIMEOUT_S,
+        "user_agent": user_agent != DEFAULT_USER_AGENT,
+        "transport": transport is not None,
+    }
+    for option, is_set in conflicts.items():
+        if is_set:
+            raise ValueError(f"{option}: set it on http_client instead when you pass http_client")
 
 
 def _validated_attempts(max_retries: int) -> int:
@@ -64,27 +81,39 @@ class BoundaryClient:
         region: Google ``gl`` region code. Google shows disputed borders per region.
         user_agent: The User-Agent header to send.
         transport: A custom httpx transport. Tests use it to replay recorded responses.
+        http_client: Your own httpx client, with your cookies, headers, proxy and timeouts.
+            The boundary client sends every request through it and never closes it.
+            It cannot be combined with ``proxy``, ``timeout_s``, ``user_agent`` or ``transport``.
     """
 
     def __init__(
         self,
         *,
         proxy: str | None = None,
-        timeout_s: float = 20.0,
+        timeout_s: float = _DEFAULT_TIMEOUT_S,
         request_delay_s: float = 0.1,
         max_retries: int = 3,
         language: str = "en",
         region: str = "us",
         user_agent: str = DEFAULT_USER_AGENT,
         transport: httpx.BaseTransport | None = None,
+        http_client: httpx.Client | None = None,
     ) -> None:
         self._attempts = _validated_attempts(max_retries)
         self._request_delay_s = request_delay_s
         self._language = language
         self._region = region
-        self._http = httpx.Client(
-            headers={"User-Agent": user_agent}, timeout=timeout_s, proxy=proxy, transport=transport
-        )
+        self._owns_http_client = http_client is None
+        if http_client is None:
+            http_client = httpx.Client(
+                headers={"User-Agent": user_agent},
+                timeout=timeout_s,
+                proxy=proxy,
+                transport=transport,
+            )
+        else:
+            _reject_connection_options(proxy, timeout_s, user_agent, transport)
+        self._http = http_client
 
     def __enter__(self) -> BoundaryClient:
         return self
@@ -98,7 +127,9 @@ class BoundaryClient:
         self.close()
 
     def close(self) -> None:
-        self._http.close()
+        """Close the HTTP client, unless the caller passed their own."""
+        if self._owns_http_client:
+            self._http.close()
 
     def find_place(self, query: str) -> Place:
         """Resolve a place name, or a Google Maps place URL, to a ``Place``."""
@@ -169,6 +200,9 @@ class AsyncBoundaryClient:
         region: Google ``gl`` region code. Google shows disputed borders per region.
         user_agent: The User-Agent header to send.
         transport: A custom httpx transport. Tests use it to replay recorded responses.
+        http_client: Your own httpx client, with your cookies, headers, proxy and timeouts.
+            The boundary client sends every request through it and never closes it.
+            It cannot be combined with ``proxy``, ``timeout_s``, ``user_agent`` or ``transport``.
     """
 
     def __init__(
@@ -176,12 +210,13 @@ class AsyncBoundaryClient:
         *,
         concurrency: int = 4,
         proxy: str | None = None,
-        timeout_s: float = 20.0,
+        timeout_s: float = _DEFAULT_TIMEOUT_S,
         max_retries: int = 3,
         language: str = "en",
         region: str = "us",
         user_agent: str = DEFAULT_USER_AGENT,
         transport: httpx.AsyncBaseTransport | None = None,
+        http_client: httpx.AsyncClient | None = None,
     ) -> None:
         if concurrency < 1:
             raise ValueError(f"concurrency: expected at least 1, got {concurrency}")
@@ -189,9 +224,17 @@ class AsyncBoundaryClient:
         self._concurrency = concurrency
         self._language = language
         self._region = region
-        self._http = httpx.AsyncClient(
-            headers={"User-Agent": user_agent}, timeout=timeout_s, proxy=proxy, transport=transport
-        )
+        self._owns_http_client = http_client is None
+        if http_client is None:
+            http_client = httpx.AsyncClient(
+                headers={"User-Agent": user_agent},
+                timeout=timeout_s,
+                proxy=proxy,
+                transport=transport,
+            )
+        else:
+            _reject_connection_options(proxy, timeout_s, user_agent, transport)
+        self._http = http_client
 
     async def __aenter__(self) -> AsyncBoundaryClient:
         return self
@@ -205,7 +248,9 @@ class AsyncBoundaryClient:
         await self.aclose()
 
     async def aclose(self) -> None:
-        await self._http.aclose()
+        """Close the HTTP client, unless the caller passed their own."""
+        if self._owns_http_client:
+            await self._http.aclose()
 
     async def find_place(self, query: str) -> Place:
         """Resolve a place name, or a Google Maps place URL, to a ``Place``."""
@@ -250,9 +295,15 @@ class AsyncBoundaryClient:
         raise _exhausted(url, self._attempts, cause)
 
 
-def find_place(query: str, *, language: str = "en", region: str = "us") -> Place:
+def find_place(
+    query: str,
+    *,
+    language: str = "en",
+    region: str = "us",
+    http_client: httpx.Client | None = None,
+) -> Place:
     """Resolve a place name to a ``Place`` with a one-off client."""
-    with BoundaryClient(language=language, region=region) as client:
+    with BoundaryClient(language=language, region=region, http_client=http_client) as client:
         return client.find_place(query)
 
 
@@ -264,11 +315,14 @@ def fetch_boundary(
     proxy: str | None = None,
     language: str = "en",
     region: str = "us",
+    http_client: httpx.Client | None = None,
 ) -> Boundary:
     """Fetch the boundary of a place with a one-off client.
 
     ``query`` is a place name, a full Google Maps place URL, or a ``Place``.
     Use ``BoundaryClient`` to reuse connections across many places.
     """
-    with BoundaryClient(proxy=proxy, language=language, region=region) as client:
+    with BoundaryClient(
+        proxy=proxy, language=language, region=region, http_client=http_client
+    ) as client:
         return client.fetch_boundary(query, zoom=zoom, max_tiles=max_tiles)

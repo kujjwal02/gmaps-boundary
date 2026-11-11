@@ -8,4 +8,6 @@ This project follows [Semantic Versioning](https://semver.org/).
 - `BoundaryClient` and `AsyncBoundaryClient` with proxy, retry and locale settings.
 - Lookup by place name, Google Maps place URL or `Place`.
 - Automatic zoom selection within a tile cap.
-- `gmaps-boundary` command with GeoJSON output and an optional PNG preview.
+- `http_client` option to send requests through your own httpx session.
+- `gmaps-boundary` command with GeoJSON output.
+- PNG preview over an OpenStreetMap basemap, from the command or `save_preview`.

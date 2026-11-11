@@ -4,7 +4,7 @@ Fetch the boundary polygon that Google Maps draws for a locality, city or postal
 
 When you search for an area on Google Maps, the map outlines it with a red dotted line. This library reads that outline from the map's vector tiles and returns it as a polygon. It needs no API key and no browser.
 
-![Outline of Indiranagar, Bengaluru](https://raw.githubusercontent.com/kujjwal02/gmaps-boundary/main/docs/indiranagar.png)
+![Boundary of Indiranagar, Bengaluru, drawn over OpenStreetMap](https://raw.githubusercontent.com/kujjwal02/gmaps-boundary/main/docs/indiranagar.png)
 
 ## Install
 
@@ -55,6 +55,27 @@ with BoundaryClient(proxy="http://user:pass@host:8080", request_delay_s=0.2) as 
         boundary = client.fetch_boundary(name)
 ```
 
+### Your own HTTP session
+
+Pass your own `httpx.Client` to control cookies, headers, proxies, timeouts and connection limits. The boundary client sends every request through it and never closes it.
+
+```python
+import httpx
+from gmaps_boundary import BoundaryClient
+
+session = httpx.Client(
+    headers={"User-Agent": "Mozilla/5.0 ..."},
+    cookies={"NID": "..."},
+    proxy="http://user:pass@host:8080",
+    timeout=30.0,
+)
+with BoundaryClient(http_client=session) as client:
+    boundary = client.fetch_boundary("Indiranagar, Bengaluru")
+session.close()
+```
+
+`AsyncBoundaryClient` takes an `httpx.AsyncClient` the same way. Set a browser User-Agent on your session: Google answers the default httpx one differently. `http_client` cannot be combined with `proxy`, `timeout_s`, `user_agent` or `transport`; set those on the session.
+
 ### Async
 
 `AsyncBoundaryClient` fetches tiles concurrently. A locality takes about 6 seconds with `concurrency=8`, against about 25 seconds for the sync client.
@@ -80,7 +101,27 @@ gmaps-boundary "560038" --zoom 16 --indent 2 > pincode.geojson
 gmaps-boundary "Manhattan, New York" -o manhattan.geojson --preview manhattan.png
 ```
 
-`--preview` draws the outline to a PNG and needs `pip install 'gmaps-boundary[preview]'`. Run `gmaps-boundary --help` for every option.
+`--preview` draws the boundary over an OpenStreetMap map and needs `pip install 'gmaps-boundary[preview]'`. Add `--no-basemap` to draw the outline alone, with no request to OpenStreetMap. Run `gmaps-boundary --help` for every option.
+
+The same drawing is available from Python:
+
+```python
+from gmaps_boundary.preview import save_preview
+
+save_preview(boundary, "indiranagar.png")  # over OpenStreetMap
+save_preview(boundary, "outline.png", basemap=False)  # outline only
+```
+
+The basemap uses at most 20 tiles from `tile.openstreetmap.org` per image. Map data (C) OpenStreetMap contributors.
+
+## Name lookup
+
+A name goes to Google Maps search, and the library takes the place Google opens for it.
+
+- A name that matches nothing, or a category search such as `"cafes in Indiranagar"`, raises `PlaceNotFoundError`.
+- An ambiguous name resolves to Google's top pick, which depends on the region of your IP address. `"Springfield"` can resolve to a landmark instead of a city. Add the city, state or country to the name, and check `boundary.place.address`.
+- A name that resolves to a place without a boundary, such as a shop or a road, raises `NoBoundaryError`.
+- To check a name before you fetch, call `find_place(name)`. It makes one request and returns the `Place`.
 
 ## Zoom and accuracy
 

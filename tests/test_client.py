@@ -233,3 +233,49 @@ def test_async_requests_fail_after_the_last_retry(monkeypatch: pytest.MonkeyPatc
 
     with pytest.raises(RequestFailedError, match="failed after 2 attempts"):
         asyncio.run(fetch())
+
+
+def test_a_caller_owned_http_client_is_used_and_left_open(replay: ReplayFactory) -> None:
+    seen_headers: list[str] = []
+    recorded = replay("locality")
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        seen_headers.append(request.headers["x-session"])
+        return recorded.handler(request)  # type: ignore[return-value]
+
+    own_client = httpx.Client(transport=httpx.MockTransport(respond), headers={"x-session": "mine"})
+    with BoundaryClient(http_client=own_client, request_delay_s=0.0) as client:
+        assert client.find_place("Indiranagar, Bengaluru") == INDIRANAGAR
+    assert seen_headers == ["mine"]
+    assert not own_client.is_closed
+    own_client.close()
+
+
+def test_a_caller_owned_async_http_client_is_left_open(replay: ReplayFactory) -> None:
+    async def fetch() -> bool:
+        own_client = httpx.AsyncClient(transport=replay("locality"))
+        async with AsyncBoundaryClient(http_client=own_client) as client:
+            assert await client.find_place("Indiranagar, Bengaluru") == INDIRANAGAR
+        still_open = not own_client.is_closed
+        await own_client.aclose()
+        return still_open
+
+    assert asyncio.run(fetch())
+
+
+@pytest.mark.parametrize(
+    ("option", "arguments"),
+    [
+        ("proxy", {"proxy": "http://localhost:8080"}),
+        ("timeout_s", {"timeout_s": 5.0}),
+        ("user_agent", {"user_agent": "my-app/1.0"}),
+        ("transport", {"transport": httpx.MockTransport(lambda request: httpx.Response(200))}),
+    ],
+)
+def test_connection_options_conflict_with_a_caller_owned_client(
+    option: str, arguments: dict[str, object]
+) -> None:
+    own_client = httpx.Client()
+    with pytest.raises(ValueError, match=rf"^{option}: set it on http_client"):
+        BoundaryClient(http_client=own_client, **arguments)  # type: ignore[arg-type]
+    own_client.close()
