@@ -1,0 +1,79 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gmaps-boundary"
+version = "0.1.0"
+description = "Fetch the boundary polygon Google Maps draws for a locality, city or postal code, as GeoJSON."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Ujjwal Kumar" }]
+keywords = ["google maps", "boundary", "polygon", "geojson", "locality", "geofence", "gis"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Typing :: Typed",
+]
+dependencies = [
+    "httpx>=0.27",
+    "numpy>=1.24",
+    "shapely>=2.0",
+]
+
+[project.optional-dependencies]
+preview = ["matplotlib>=3.7"]
+
+[project.scripts]
+gmaps-boundary = "gmaps_boundary.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/kujjwal02/gmaps-boundary"
+Issues = "https://github.com/kujjwal02/gmaps-boundary/issues"
+Changelog = "https://github.com/kujjwal02/gmaps-boundary/blob/main/CHANGELOG.md"
+
+[dependency-groups]
+dev = [
+    "matplotlib>=3.7",
+    "mypy>=1.13",
+    "pytest>=8",
+    "ruff>=0.8",
+    "types-shapely>=2.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gmaps_boundary"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "README.md", "LICENSE", "CHANGELOG.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not live'"
+markers = ["live: calls Google over the network"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF", "PT", "C4"]
+
+[tool.mypy]
+strict = true
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["matplotlib.*"]
+ignore_missing_imports = true
